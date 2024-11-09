@@ -11,8 +11,9 @@
 class Controller {
 public:
     Controller(AS5048 &encoder, Driver &driver, Algorithm *algorithm, ProfileGenerator &profileGen);
+    
     void update(float desiredAngle); // Update method to perform control logic
-    float constrain(float value, float minValue, float maxValue) ;
+    float constrain_(float value, float minValue, float maxValue) ;
     void commandTargetPosition(float targetPosition, float totalDistance);
 
 

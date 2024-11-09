@@ -9,6 +9,7 @@ void setup() {
    
     encoder.begin();
     encoder.startTask();
+    
 }
 
 void loop() {

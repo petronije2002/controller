@@ -1,5 +1,6 @@
 // Controller.cpp
 #include "Controller.h"
+#include "AS5048my.h"
 #include "math.h"
 
 Controller::Controller(AS5048 &encoder, Driver &driver, Algorithm *algorithm, ProfileGenerator &profileGen)
@@ -7,7 +8,7 @@ Controller::Controller(AS5048 &encoder, Driver &driver, Algorithm *algorithm, Pr
 
 void Controller::update(float desiredAngle) {
     // Read the current angle from the encoder
-    float currentAngle = _encoder.readAngle();
+    float currentAngle = _encoder.getAngle();
 
     // Generate angles vector from the profile generator
     std::vector<float> angles = _profileGen.generateAngles();
@@ -43,7 +44,7 @@ void Controller::commandTargetPosition(float targetPosition, float totalDistance
     _profileGen.generateScurveProfile(totalDistance);
 }
 
-float Controller::constrain(float value, float minValue, float maxValue) {
+float Controller::constrain_(float value, float minValue, float maxValue) {
     if (value < minValue) return minValue;
     if (value > maxValue) return maxValue;
     return value;
