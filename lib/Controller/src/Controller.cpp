@@ -11,7 +11,7 @@ void Controller::update(float desiredAngle) {
     float currentAngle = _encoder.getAngle();
 
     // Generate angles vector from the profile generator
-    std::vector<float> angles = _profileGen.generateAngles();
+    std::vector<float> angles = _profileGen.getPositionProfile();
 
     // Get the interpolated position and velocity from the profile generator
     float positionValue = _profileGen.getInterpolatedValue(currentAngle, _profileGen.getPositionProfile(), angles);
