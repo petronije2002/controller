@@ -20,6 +20,9 @@ public:
     float getInterpolatedValue(float currentAngle, const std::vector<float>& profile, const std::vector<float>& angles) const;
     float getPositionForAngle(float currentAngle) const;
     float getVelocityForAngle(float currentAngle) const;
+    float getPositionForTime(float currentTime) const;
+    float getVelocitynForTime(float moment_) const ;
+
     
     
 
@@ -43,8 +46,8 @@ private:
     float sigmoid(float x, float c, float c2) const;
     float calculateCommandedVelocity(float t, float commanded_velocity, float constVelocity_time);  
     void generateAngleAndVelocityValues(float angleToGo, float commanded_velocity);
-    float calculateSegmentPosition(int segment, float t) const;
-    float calculateSegmentVelocity(int segment, float t) const;
+    // float calculateSegmentPosition(int segment, float t) const;
+    // float calculateSegmentVelocity(int segment, float t) const;
     float calculateDesiredPositionAtT(float current_time, float prevVel, float step_size_ad);
 
 };

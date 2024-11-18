@@ -11,9 +11,12 @@ void AS5048::begin()
     // add comment to push it .. push it to commeit
     // more comments
     pinMode(_csPin, OUTPUT);
-    // digitalWrite(_csPin, LOW);  // Deselect initially
+    digitalWrite(_csPin, LOW);  // Deselect initially
     SPI.begin();
     lastTime = micros();
+
+
+    startTask();
 
     previousAngle = getAngle();
 }
@@ -21,7 +24,7 @@ void AS5048::begin()
 void AS5048::startTask()
 {
     // Create a FreeRTOS task to update the angle in the background
-    xTaskCreatePinnedToCore(angleTask, "AngleTask", 2048, this, 1, NULL, 1);
+    xTaskCreatePinnedToCore(angleTask, "AngleTask", 2048, this, 1, NULL, 0);
 }
 
 void AS5048::angleTask(void *pvParameters)
@@ -63,7 +66,7 @@ void AS5048::angleTask(void *pvParameters)
             xSemaphoreGive(sensor->angleMutex);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10)); // Adjust delay based on desired update rate
+        vTaskDelay(pdMS_TO_TICKS(2)); // Adjust delay based on desired update rate
     }
 }
 
@@ -75,11 +78,12 @@ void AS5048::readAngle()
     SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE1));
 
     digitalWrite(_csPin, LOW); // Select the encoder
+    // delay(5);
     SPI.transfer16(command);   // Send the command to read angle
 
     digitalWrite(_csPin, HIGH);
 
-    delay(2);
+    // delay(2);
 
     digitalWrite(_csPin, LOW);
 
@@ -87,7 +91,9 @@ void AS5048::readAngle()
     rawAngle = SPI.transfer16(0x0000);
 
     digitalWrite(_csPin, HIGH); // Deselect the encoder
+    // delay(2);
     SPI.endTransaction();
+    digitalWrite(_csPin, LOW);
 
     // Mask the top 2 bits (PAR and EF) and convert to degrees
     rawAngle &= 0x3FFF;

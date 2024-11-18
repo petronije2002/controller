@@ -3,16 +3,20 @@
 
 #include "driver/mcpwm.h"
 #include "PWMconfig.h"
-
+#include "soc/mcpwm_reg.h"
+#include "soc/mcpwm_struct.h"
+#include "Arduino.h"
 
 class Driver {
 public:
+    // Driver(int loPhase1=LO1, int hoPhase1=HO1, int loPhase2=LO2, int hoPhase2=HO2, int loPhase3=LO3, int hoPhase3=HO3);
     Driver(int loPhase1, int hoPhase1, int loPhase2, int hoPhase2, int loPhase3, int hoPhase3);
+
     void init();
     void setPWMDutyCycle(float dutyA, float dutyB, float dutyC);
 
 private:
-    void setPWM(mcpwm_timer_t timer, int pin, float duty); // Change here
+    // void setPWM(mcpwm_timer_t timer, int pin, float duty); // Change here
 
     int _loPhase1;
     int _hoPhase1;
