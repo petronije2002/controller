@@ -7,6 +7,7 @@
 class PIDController : public Algorithm {
 public:
     PIDController(float _kp, float _ki, float _kd);
+    void init() override; // Override the init method
     float calculate(float desired, float current); // Calculate method
 
 private:

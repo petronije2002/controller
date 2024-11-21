@@ -2,6 +2,7 @@ import serial
 import serial.tools.list_ports
 import time
 import numpy as np  # For statistical calculations
+import csv  # For writing to CSV files
 
 def find_esp32_port():
     """
@@ -25,7 +26,26 @@ def compute_statistics(data):
 
     return mean, median, min_val, max_val, rms
 
-def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=100):
+
+def save_to_csv(filename, data):
+    """
+    Saves the collected data to a CSV file.
+    """
+    try:
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Sample Number", "Value"])  # Write header
+            for i, value in enumerate(data):
+                writer.writerow([i + 1, value])
+        print(f"Data saved to {filename}")
+    except Exception as e:
+        print(f"Error saving to CSV: {e}")
+
+
+
+
+
+def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=5000):
     """
     Collects `sample_size` values from the serial port and computes statistics.
     """
@@ -59,6 +79,10 @@ def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=100
             print(f"Max: {max_val:.4f}")
             print(f"RMS: {rms:.4f}")
 
+            save_to_csv("result", values)
+
+            
+
     except serial.SerialException as e:
         print(f"Error: {e}")
     except KeyboardInterrupt:
@@ -70,6 +94,8 @@ if __name__ == "__main__":
     if esp32_port:
         print(f"ESP32 detected on port: {esp32_port}")
         monitor_serial_and_collect(esp32_port)
+
+
     else:
         print("No ESP32 device found. Please check the connection.")
 

@@ -19,12 +19,12 @@ void Driver::init() {
     // pinMode(HO3, OUTPUT);
 
 
-    mcpwm_config_t pwm_config;
-    pwm_config.frequency = 19200; // Set frequency to 20 kHz
-    pwm_config.cmpr_a = 0; // Initialize duty cycle for high-side PWM
-    pwm_config.cmpr_b = 0; // Initialize duty cycle for low-side PWM
-    pwm_config.counter_mode = MCPWM_UP_DOWN_COUNTER;
-    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
+    this->pwm_config.frequency = 38400; // Set frequency to 20 kHz
+    this->pwm_config.cmpr_a = 0; // Initialize duty cycle for high-side PWM
+    this->pwm_config.cmpr_b = 0; // Initialize duty cycle for low-side PWM
+    this->pwm_config.counter_mode = MCPWM_UP_DOWN_COUNTER;
+    this->pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
+    
 
     // Phase 1
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);
@@ -76,10 +76,4 @@ void Driver::setPWMDutyCycle(float dutyA, float dutyB, float dutyC) {
 
 
 
-    // setPWM(MCPWM_TIMER_0, _hoPhase1, dutyA);
-    // setPWM(MCPWM_TIMER_0, _loPhase1, dutyA);
-    // setPWM(MCPWM_TIMER_1, _hoPhase2, dutyB);
-    // setPWM(MCPWM_TIMER_1, _loPhase2, dutyB);
-    // setPWM(MCPWM_TIMER_2, _hoPhase3, dutyC);
-    // setPWM(MCPWM_TIMER_2, _loPhase3, dutyC);
 }

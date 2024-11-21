@@ -15,6 +15,8 @@ public:
     void init();
     void setPWMDutyCycle(float dutyA, float dutyB, float dutyC);
 
+    mcpwm_config_t pwm_config;
+
 private:
     // void setPWM(mcpwm_timer_t timer, int pin, float duty); // Change here
 

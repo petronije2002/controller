@@ -3,19 +3,28 @@
 
 #include "AS5048my.h"
 #include "Driver.h"
+#include "PIDAlgorithm.h" 
 
+#include "Controller.h"
 
-
+// AS5048 &encoder, Driver &driver, Algorithm *algorithm, ProfileGenerator &profileGen
 
 // // Initialize the ProfileGenerator
 // float maxVelocity = 4.0f;   // Maximum velocity
 // float maxAcceleration = 2.0f;  // Maximum acceleration
 // int numSegments = 50;  // Number of segments
-// ProfileGenerator profileGen(maxVelocity, maxAcceleration, numSegments);
+
+
+ProfileGenerator profileGen(5, 1, 20);
 
 AS5048 encoder_(5);
 
 Driver driver_(13,15,12,14,27,26);
+
+Algorithm* pid = new PIDController(1.0f, 0.1f, 0.05f); // Create a pointer to PIDController
+
+Controller controller_( encoder_,  driver_ , pid,  profileGen );
+
 
 // Variables to store the profiles
 // const std::vector<float>* positionProfile;
@@ -65,6 +74,10 @@ void setup() {
 
     encoder_.begin();
 
+    pid->init();
+
+
+
 
     // Generate the S-curve profile
     float totalDistance = 3.0f;       // Example distance to travel
@@ -72,16 +85,12 @@ void setup() {
 
     driver_.init();
 
+    controller_.init();
     
 }
 
 void loop() {
 
-
-
-
-
-    
 
 
     // uint64_t before_ = micros();
@@ -91,15 +100,19 @@ void loop() {
     // uint64_t after_ = micros();
 
     // Serial.printf("Microseconds: %llu \n",  after_ - before_);
-    Serial.printf("Angle: %f \n", encoder_.getAngle());
-
-    driver_.setPWMDutyCycle(20.0,70.0,15.0);
-
    
+    // driver_.setPWMDutyCycle(20.0,70.0,15.0);
+    // Serial.printf("ControlValue: %f \n", controller_.getControlValue());
+    // Serial.printf("Angle: %f  \n", controller_.getdutyA());
 
+    controller_.setOmega(0.1);
+
+    // Serial.printf("%f , %f , %f \n" , controller_.getdutyA(), controller_.getdutyB(), controller_.getdutyC());
+    // Serial.printf("dutyB: %f \n" , controller_.getdutyB());
+    // Serial.printf("dutyC: %f \n" , controller_.getdutyC());
     // profileGen.generateScurveProfile(3, 1.4);
    
-     delay(100);
+     delay(10);
 
 
     // // Get the generated profiles
