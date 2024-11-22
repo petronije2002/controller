@@ -26,48 +26,6 @@ Algorithm* pid = new PIDController(1.0f, 0.1f, 0.05f); // Create a pointer to PI
 Controller controller_( encoder_,  driver_ , pid,  profileGen );
 
 
-// Variables to store the profiles
-// const std::vector<float>* positionProfile;
-// const std::vector<float>* velocityProfile;
-
-// const std::vector<float>* currentTime;
-
-// // Iterator for loop testing
-// size_t currentIndex = 0;
-
-
-
-// void setup() {
-//     Serial.begin(115200);
-
-//     // Configure MCPWM timer 0, phase 1 (Example: High GPIO 13, Low GPIO 12)
-//     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, 13); // High-side PWM
-//     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, 12); // Low-side PWM
-
-//     mcpwm_config_t pwm_config;
-//     pwm_config.frequency = 19200*2; // 20 kHz frequency
-//     pwm_config.cmpr_a = 50.0f;    // 50% duty cycle
-//     pwm_config.cmpr_b = 50.0f;    // 50% duty cycle
-//     pwm_config.counter_mode = MCPWM_UP_DOWN_COUNTER;
-//     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
-
-//     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);
-// }
-
-// void loop() {
-//     static bool toggle = false;
-
-//     // Alternate between 25% and 75% duty cycle every second
-//     if (toggle) {
-//         mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, 25.0f);
-//     } else {
-//         mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, 75.0f);
-//     }
-//     toggle = !toggle;
-
-//     delay(1000);
-// }
-
 void setup() {
     // Start serial communication
     Serial.begin(115200);
@@ -76,8 +34,7 @@ void setup() {
 
     pid->init();
 
-
-
+    Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
 
     // Generate the S-curve profile
     float totalDistance = 3.0f;       // Example distance to travel
@@ -106,13 +63,19 @@ void loop() {
     // Serial.printf("Angle: %f  \n", controller_.getdutyA());
 
     controller_.setOmega(0.1);
+    controller_.setControlValue(10);
 
-    // Serial.printf("%f , %f , %f \n" , controller_.getdutyA(), controller_.getdutyB(), controller_.getdutyC());
+
+    // Serial.printf("Elapsed time: %llu \n", controller_.gettmp());
+
+
+
+    //  Serial.printf("%f , %f , %f \n" , controller_.getdutyA(), controller_.getdutyB(), controller_.getdutyC());
     // Serial.printf("dutyB: %f \n" , controller_.getdutyB());
     // Serial.printf("dutyC: %f \n" , controller_.getdutyC());
     // profileGen.generateScurveProfile(3, 1.4);
    
-     delay(10);
+     delay(2000);
 
 
     // // Get the generated profiles

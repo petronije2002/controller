@@ -56,15 +56,20 @@ def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=500
 
             values = []
             while len(values) < sample_size:
+
                 if ser.in_waiting > 0:
                     # Read a line from the serial port
                     line = ser.readline().decode('utf-8', errors='ignore').strip()
+                    print(line)
+                    if not line:
+                        continue 
+                    # print(f"Raw data: {line}") 
                     
                     # Try to extract a floating-point value
                     try:
                         angle = float(line.split(":")[-1].strip())  # Assuming "Angle: <value>"
                         values.append(angle)
-                        print(f"Collected: {angle}")
+                        # print(f"Collected: {angle}")
                     except ValueError:
                         print(f"Invalid data: {line}")  # Handle invalid lines
                 
@@ -79,7 +84,7 @@ def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=500
             print(f"Max: {max_val:.4f}")
             print(f"RMS: {rms:.4f}")
 
-            save_to_csv("result", values)
+            save_to_csv("result.csv", values)
 
             
 

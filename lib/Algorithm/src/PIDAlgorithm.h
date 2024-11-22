@@ -9,6 +9,10 @@ public:
     PIDController(float _kp, float _ki, float _kd);
     void init() override; // Override the init method
     float calculate(float desired, float current); // Calculate method
+    void setKp(float kp_);
+    void setKi(float ki_);
+    void setKd(float kd_);
+
 
 private:
     float kp, ki, kd;

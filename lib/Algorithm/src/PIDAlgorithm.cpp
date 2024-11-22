@@ -14,6 +14,22 @@ void PIDController::init() {
 }
 
 
+void PIDController::setKp(float kp_){
+
+    this->kp = kp_;
+}
+
+void PIDController::setKi(float ki_){
+
+    this->ki = ki_;
+}
+
+void PIDController::setKd(float kd_){
+
+    this->kd = kd_;
+}
+
+
 
 float PIDController::calculate(float desired, float current) {
     float error = desired - current; // Calculate error
