@@ -23,10 +23,6 @@ public:
     float getPositionForTime(float currentTime) const;
     float getVelocitynForTime(float moment_) const ;
 
-    
-    
-
-
 private:
     std::vector<float> positionProfile;
     std::vector<float> velocityProfile;

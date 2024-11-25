@@ -6,7 +6,9 @@
 #include "Driver.h"    // Include your Driver header
 #include "Algorithm.h" // Include your Algorithm base class
 #include "ProfileGenerator.h"
-#define QUEUE_SIZE 100
+
+#define QUEUE_SIZE 20
+#define SIN_TABLE_SIZE 512 
 
 // Controller class for managing control logic of a motor
 class Controller
@@ -18,15 +20,19 @@ public:
 
     void update(float desiredAngle); // Update method for control logic
     float constrain_(float value, float minValue, float maxValue); // Constrain a value between specified limits
-    void commandTargetPosition(float targetPosition, float totalDistance); // Command the motor to move to a target position with a specified distance
+    void commandTarget(float targetPosition, float totalDistance); // Command the motor to move to a target position with a specified distance
+
+
+
 
     float getControlValue(); // Get the current control value
     float getdutyA();        // Get the duty cycle for phase A
     float getdutyB();        // Get the duty cycle for phase B
     float getdutyC();        // Get the duty cycle for phase C
 
-    float omega = 2; // Angular velocity parameter
-    float maxControlValue = 50;
+    float omega; // Angular velocity parameter
+    volatile bool pwmTaskRunning = false;
+   
 
     void setOmega(float omega_); // Set the angular velocity and update related parameters
     // void addToBuffer(float value) ;
@@ -43,17 +49,24 @@ public:
 
     static void pwmTask(void *pvParameters); // Task function for PWM generation
     static void serialTask(void *pvParameters);
+    static void serialFeedbackTask(void *pvParameters);
     
     void startTask(); // Start the FreeRTOS task for PWM control
 
     void setControlValue(float controlValue_);
+    void setMaxXontrolValue(float maxControlValue_);
+    float getMaxXontrolValue();
+
+    void initSinTable();
+    float getSinFromTable(float angle) ;
+    AS5048 &_encoder;             // Reference to the encoder object
 
 
    
 
 
 private:
-    AS5048 &_encoder;             // Reference to the encoder object
+    
     Driver &_driver;              // Reference to the driver object
     Algorithm *_algorithm;        // Pointer to the control algorithm (e.g., PID)
     ProfileGenerator &_profileGen; // Reference to the profile generator
@@ -64,11 +77,28 @@ private:
 
     float controlValue = 0;
 
+    float maxControlValue = 50;
+
     int counter = 0; // Counter for time step increments
 
+    float sinTable[SIN_TABLE_SIZE];
+
+    typedef struct
+    {
+        float position;
+        float velocity;
+        uint64_t elapsed_time;
+    } MotionData;
+
     float queueStorage[QUEUE_SIZE];
+    uint8_t queueFeedbackStorage[QUEUE_SIZE * sizeof(MotionData)];
+
     StaticQueue_t queueControlBlock;
+    StaticQueue_t queueFeedbackControlBlock;
+
     QueueHandle_t serialQueue;
+    QueueHandle_t serialFeedbackQueue;
+
 
     SemaphoreHandle_t memMutex = xSemaphoreCreateMutex(); // Mutex for thread-safe access
 };

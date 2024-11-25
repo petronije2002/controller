@@ -13,7 +13,11 @@ public:
     Driver(int loPhase1, int hoPhase1, int loPhase2, int hoPhase2, int loPhase3, int hoPhase3);
 
     void init();
-    void setPWMDutyCycle(float dutyA, float dutyB, float dutyC);
+    void setPWMDutyCycle(float dutyA, float dutyB, float dutyC) ;
+
+    void stopDriver();
+    void startDriver();
+
 
     mcpwm_config_t pwm_config;
 

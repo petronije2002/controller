@@ -58,10 +58,19 @@ void AS5048::angleTask(void *pvParameters)
             float angleDifference = sensor->angle - sensor->previousAngle;
 
             // Handle angle wrapping (e.g., crossing 0 or 360 degrees)
-            if (angleDifference > 180.0f)
-                angleDifference -= 360.0f; // Wrap down
-            else if (angleDifference < -180.0f)
+            if (angleDifference > 180.0f){
+                angleDifference -= 360.0f; // Wrap down 
+                sensor->turnCount--;     
+            }
+                
+                
+            else if (angleDifference < -180.0f){
+
                 angleDifference += 360.0f; // Wrap up
+                sensor->turnCount++;  
+            }
+            
+              
 
             // Calculate velocity in degrees per second
             sensor->velocity = 1000 * angleDifference / timeDiff;

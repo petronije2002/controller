@@ -5,19 +5,11 @@ Driver::Driver(int loPhase1, int hoPhase1, int loPhase2, int hoPhase2, int loPha
       _loPhase2(loPhase2), _hoPhase2(hoPhase2),
       _loPhase3(loPhase3), _hoPhase3(hoPhase3) {}
 
+
+  
+
 void Driver::init() {
-    // Initialize MCPWM for each phase
-
-
-    // pinMode(LO1, OUTPUT);
-    // pinMode(HO1, OUTPUT);
-
-    // pinMode(LO2, OUTPUT);
-    // pinMode(HO2, OUTPUT);
-
-    // pinMode(LO3, OUTPUT);
-    // pinMode(HO3, OUTPUT);
-
+   
 
     this->pwm_config.frequency = 38400; // Set frequency to 20 kHz
     this->pwm_config.cmpr_a = 0; // Initialize duty cycle for high-side PWM
@@ -54,16 +46,16 @@ void Driver::init() {
     mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
     mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_1);
     mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_2);
-    // MCPWM0.int_ena.timer0_tez_int_ena = 1;
+
+
+    
+   
 }
 
-// void Driver::setPWM(mcpwm_timer_t timer, int pin, float duty) {
-//     int pwmValue = static_cast<int>(duty * 8191); // Assuming 12-bit resolution (0-8191)
-//     mcpwm_set_duty(MCPWM_UNIT_0, timer, MCPWM_OPR_A, pwmValue); // Set duty for high-side
-//     mcpwm_set_duty(MCPWM_UNIT_0, timer, MCPWM_OPR_B, pwmValue); // Set duty for low-side
-// }
+
 
 void Driver::setPWMDutyCycle(float dutyA, float dutyB, float dutyC) {
+
 
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, dutyA); // Set duty for high-side
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, dutyA); // Set duty for low-side
@@ -77,3 +69,20 @@ void Driver::setPWMDutyCycle(float dutyA, float dutyB, float dutyC) {
 
 
 }
+
+void Driver::stopDriver(){
+    mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
+    mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_1);
+    mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_2);
+
+    // gpio_set_direction((gpio_num_t) this->_hoPhase1, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)_hoPhase1, 0);  // Set to LOW
+
+
+  
+};
+void Driver::startDriver(){
+    mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
+    mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_1);
+    mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_2);
+};

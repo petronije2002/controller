@@ -36,6 +36,7 @@ private:
     float previousAngle;       // Previous angle for velocity calculation
     float velocity;            // Velocity in degrees per second
     unsigned long lastTime;    // Last time in microseconds (used for velocity calculation)
+    float turnCount = 0;
     
     SemaphoreHandle_t angleMutex; // Mutex for thread-safe access to `angle` and `velocity`
 

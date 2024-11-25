@@ -45,7 +45,7 @@ def save_to_csv(filename, data):
 
 
 
-def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=5000):
+def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=3000):
     """
     Collects `sample_size` values from the serial port and computes statistics.
     """

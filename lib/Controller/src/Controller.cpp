@@ -2,17 +2,41 @@
 #include "Controller.h"
 #include "AS5048my.h"
 #include "math.h"
-#include "esp_timer.h"
+// #include "esp_timer.h"
+#include <stdint.h>
+#include <stdio.h>
 
-float preallocBuffer[QUEUE_SIZE];
-volatile int head = 0;
-volatile int tail = 0;
+// #define SIN_TABLE_SIZE 256  // 10-bit resolution
+// #define TWO_PI 6.28318530718
+
+
+
+
+float sinTable[SIN_TABLE_SIZE];
+
+
+
 
 // Constructor initializes member references and control value
 Controller::Controller(AS5048 &encoder, Driver &driver, Algorithm *algorithm, ProfileGenerator &profileGen)
-    : _encoder(encoder), _driver(driver), _algorithm(algorithm), _profileGen(profileGen), controlValue(0) {
-        serialQueue = xQueueCreateStatic(QUEUE_SIZE, sizeof(float), (uint8_t *)queueStorage, &queueControlBlock);
-; 
+    : _encoder(encoder), _driver(driver), _algorithm(algorithm), _profileGen(profileGen), controlValue(0)
+    
+    {
+    serialQueue = xQueueCreateStatic(QUEUE_SIZE, sizeof(float), (uint8_t *)queueStorage, &queueControlBlock); 
+    
+    
+    // This queue is supposed to be used for communication between controller class, and outside world 
+    // mostly for settings, and debugging. 
+    // To check how motor responses to 'desired' position and 'desired' velocity.
+
+    serialFeedbackQueue = xQueueCreateStatic(QUEUE_SIZE,
+                                             sizeof(MotionData),
+                                             queueFeedbackStorage,
+                                             &queueFeedbackControlBlock);
+
+
+    
+
 
     }
 
@@ -20,45 +44,96 @@ Controller::Controller(AS5048 &encoder, Driver &driver, Algorithm *algorithm, Pr
 void Controller::init()
 {
     startTask();
+    initSinTable();
+    setOmega(0.0);
 }
 
-
+void Controller::commandTarget(float targetPosition, float targetVelocity){};
 
 // Start a FreeRTOS task for managing PWM control logic
 void Controller::startTask()
 {
     xTaskCreatePinnedToCore(pwmTask, "pwmTask", 2048, this, 1, NULL, 1);
-    // xTaskCreatePinnedToCore(serialTask, "serialTask", 2048, this, 3, NULL, 1);  // Add task for serial communication
-
+    // xTaskCreatePinnedToCore(serialTask, "serialTask", 2048, this, 1, NULL, 1);  // Add task for serial communication
+    // this->setOmega(0);
 }
 
 // Placeholder for control update logic (not yet implemented)
-void Controller::update(float desiredAngle) {}
+void Controller::update(float desiredAngle) {
+
+
+
+
+
+}
+
+
+
+void Controller::initSinTable() {
+    for (int i = 0; i < SIN_TABLE_SIZE; i++) {
+        sinTable[i] = sinf((TWO_PI * i) / SIN_TABLE_SIZE);
+    }
+}
+
+float Controller::getSinFromTable(float angle) {
+    // Normalize the angle to the range [0, 2*pi)
+    while (angle < 0) angle += TWO_PI;
+    while (angle >= TWO_PI) angle -= TWO_PI;
+
+    float stepSize= TWO_PI / SIN_TABLE_SIZE;
+
+    // Calculate the index in the table and the fractional part
+    float indexFloat = angle / stepSize;  // Scaled index
+    int index = (int)indexFloat;         // Integer part
+    float t = indexFloat - index;        // Fractional part for interpolation
+
+    // Handle wrapping for the last index
+    int nextIndex = (index + 1) % SIN_TABLE_SIZE;
+
+    // Perform linear interpolation
+    float sineValue = (1 - t) * sinTable[index] + t * sinTable[nextIndex];
+    return sineValue;
+}
+
 
 
 
 // FreeRTOS task for generating and updating PWM signals - in background
 void Controller::pwmTask(void *pvParameters)
 {
+
     Controller *controller_ = (Controller *)pvParameters;
     const int64_t interval_us = 1000000 / 20000; // 50 microseconds interval for a 20kHz update rate
 
     while (true)
     {
+
+        while(!controller_->pwmTaskRunning){
+
+           vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
+       
         int64_t start_time = esp_timer_get_time(); // Get the current time
 
         xSemaphoreTake(controller_->memMutex, portMAX_DELAY);
 
         // Calculate the current angle based on the counter and omega
+        // actually, it should  be 2*PI*freq_mod/freq_carrier)*controller_->counter
+        // but, since I will command omega [rad/ses] (my desired angular velocity),
+        // i decided to use omega , cince omega=2*pi*f 
         float tempAngle = controller_->omega * (controller_->counter /20000.0);
+
 
         // Generate duty cycles for the three phases based on the angle no matter what maxControlValue is
         // dutyA, dutyB and dutyC, will always be between 0 and 100
         // Whatever is returned from the algorithm , as a controlValue ,  will be rescaled from 0-50.
 
-        controller_->dutyA = 50 + 50 * (controller_->controlValue / controller_->maxControlValue) * sin(tempAngle);
-        controller_->dutyB = 50 + 50 * (controller_->controlValue / controller_->maxControlValue) * sin(tempAngle + 2 * M_PI / 3);
-        controller_->dutyC = 50 + 50 * (controller_->controlValue / controller_->maxControlValue) * sin(tempAngle + 4 * M_PI / 3);
+        float scaleControle  = controller_->controlValue / controller_->maxControlValue;
+
+        controller_->dutyA = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle);
+        controller_->dutyB = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle + 2 * M_PI / 3);
+        controller_->dutyC = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle + 4 * M_PI / 3);
 
         // Send the duty cycles to the driver
         controller_->_driver.setPWMDutyCycle(controller_->dutyA, controller_->dutyB, controller_->dutyC);
@@ -71,7 +146,7 @@ void Controller::pwmTask(void *pvParameters)
             controller_->counter = 0;
         }
         if(controller_->counter %1000 ==0){
-                   xQueueSend(controller_->serialQueue, &controller_->dutyA, pdMS_TO_TICKS(1)); // No dynamic allocation
+                   xQueueSend(controller_->serialQueue, &controller_->dutyA, pdMS_TO_TICKS(0)); // No dynamic allocation
         }
 
         xSemaphoreGive(controller_->memMutex);
@@ -138,8 +213,24 @@ float Controller::constrain_(float value, float minValue, float maxValue)
 void Controller::setOmega(float omega_)
 {
     xSemaphoreTake(memMutex, portMAX_DELAY);
-    this->omega = omega_;
-    this->totalSamples = int(2 * M_PI * 20000 / this->omega); // Calculate the number of samples for a full wave
+
+    if(omega_>0){
+
+        
+
+        this->omega = omega_;    
+        this->totalSamples = int(2 * M_PI * 20000 / this->omega); // Calculate the number of samples for a full wave
+
+        this->pwmTaskRunning=true;
+        this->counter =0;
+
+    }else if(omega_==0){
+        this->_driver.setPWMDutyCycle(0,0,0);
+        this->counter =0;
+
+        this->pwmTaskRunning=false;
+    }
+    
     xSemaphoreGive(memMutex);
 }
 
@@ -157,11 +248,12 @@ void Controller::setOmega(float omega_)
 
  * @param controlValue The control signal used to scale the sine wave.
  */
+
+
 void Controller::setControlValue(float controlValue_)
 {
 
     xSemaphoreTake(memMutex, portMAX_DELAY);
-
     controlValue = constrain_(controlValue_, 0, this->maxControlValue);
     xSemaphoreGive(memMutex);
 }
@@ -178,13 +270,24 @@ float Controller::getControlValue()
 
 
 
-// int64_t Controller::gettmp()
-// {
-//     xSemaphoreTake(memMutex, portMAX_DELAY);
-//     float aaa = this->tmp;
-//     xSemaphoreGive(memMutex);
-//     return aaa;
-// }
+void Controller::setMaxXontrolValue(float maxControlValue_)
+{
+    xSemaphoreTake(memMutex, portMAX_DELAY);
+    this->maxControlValue = maxControlValue_;
+    xSemaphoreGive(memMutex);
+   
+}
+
+float Controller::getMaxXontrolValue()
+{
+    float aaa;
+    xSemaphoreTake(memMutex, portMAX_DELAY);
+    aaa = this->maxControlValue;
+    xSemaphoreGive(memMutex);
+
+    return aaa;
+   
+}
 
 void Controller::serialTask(void *pvParameters)
 {
@@ -200,22 +303,20 @@ void Controller::serialTask(void *pvParameters)
     }
 }
 
-// void Controller::addToBuffer(float value) {
-//     int nextHead = (head + 1) % QUEUE_SIZE;
 
-//     // Check for buffer overrun
-//     if (nextHead != tail) {
-//         preallocBuffer[head] = value;
-//         head = nextHead;
-//     }
-// }
+void Controller::serialFeedbackTask(void *pvParameters)
+{
+    Controller *controller_ = (Controller *)pvParameters;
 
-// bool Controller::getFromBuffer(float *value) {
-//     if (head == tail) {
-//         return false;  // Buffer is empty
-//     } else {
-//         *value = preallocBuffer[tail];
-//         tail = (tail + 1) % QUEUE_SIZE;
-//         return true;
-//     }
-// }
+    while (true)
+    {
+        MotionData receivedValue;
+        if (xQueueReceive(controller_->serialFeedbackQueue, &receivedValue, pdMS_TO_TICKS(1)) == pdPASS)
+        {
+            Serial.printf("t: %llu,", receivedValue.elapsed_time,4, "p: %f,",receivedValue.position,4,"v: %f", receivedValue.velocity,4);
+        }
+    }
+}
+
+
+
