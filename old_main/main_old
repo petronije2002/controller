@@ -1,0 +1,64 @@
+#include <Arduino.h>
+#include "ProfileGenerator.h"
+
+#include "AS5048my.h"
+#include "Driver.h"
+#include "PIDAlgorithm.h" 
+#include "esp_mac.h"
+#include "string.h"
+#include "Controller.h"
+
+#include "Communicator.h"
+
+#include "Communicator2.h"
+// AS5048 &encoder, Driver &driver, Algorithm *algorithm, ProfileGenerator &profileGen
+
+// // Initialize the ProfileGenerator
+// float maxVelocity = 4.0f;   // Maximum velocity
+// float maxAcceleration = 2.0f;  // Maximum acceleration
+// int numSegments = 50;  // Number of segments
+
+
+ProfileGenerator profileGen(5, 1, 20);
+
+AS5048 encoder_(5);
+
+Driver driver_(13,15,12,14,27,26);
+
+Algorithm* pid = new PIDController(1.0f, 0.1f, 0.05f); // Create a pointer to PIDController
+
+Controller controller_( encoder_,  driver_ , pid,  profileGen );
+String inputString = ""; // Stores the received serial command
+bool stringComplete = false; // Tracks if a full command has been received
+
+HardwareSerial mySerial(0);  // Use Serial1, Serial2, or Serial3 depending on which port you want to use
+
+
+Communicator communicator_(mySerial,controller_);
+
+void setup() {
+    // Start serial communication
+    // Serial.begin(115200);
+
+    encoder_.begin();
+
+    pid->init();
+
+    // Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
+
+    // Generate the S-curve profile
+    float totalDistance = 3.0f;       // Example distance to travel
+    float commandedVelocity = 1.4;   // Example commanded velocity
+
+    driver_.init();
+
+    controller_.init();
+    communicator_.begin();
+
+}
+
+
+void loop() {
+
+
+}

@@ -1,7 +1,7 @@
 #include "AS5048my.h"
 
 
-AS5048::AS5048(int csPin) : _csPin(csPin), angle(0.0), velocity(0.0)
+AS5048::AS5048(int csPin) : _csPin(csPin), angle(0.0), velocity(0.0),smoothVelocity(0) ,prevVelocity(0.0),smmothingVelocityFactor(0.5)
 {
     // Create a mutex for thread-safe access to shared variables
     angleMutex = xSemaphoreCreateMutex();
@@ -31,15 +31,20 @@ void AS5048::begin()
 void AS5048::startTask()
 {
     // Creates a task pinned to Core 0
-    xTaskCreatePinnedToCore(angleTask, "AngleTask", 2048, this, 1, NULL, 0);
+    xTaskCreatePinnedToCore(angleTask, "AngleTask", 2048, this, 4, NULL, 0);
 }
 
-// Static task function for updating the angle in the background
+
 void AS5048::angleTask(void *pvParameters)
 {
     // Cast the parameter to the AS5048 object
     AS5048 *sensor = (AS5048 *)pvParameters;
     sensor->lastTime = micros();
+
+    const int speedCalcRate = 8;  // Calculate speed every 8 samples (1 kHz if sampling at 8 kHz)
+    int sampleCounter = 0;       // Counter for angle samples
+    float cumulativeAngle = 0.0; // Accumulated angle difference
+    unsigned long cumulativeTime = 0; // Accumulated time
 
     while (true)
     {
@@ -58,35 +63,128 @@ void AS5048::angleTask(void *pvParameters)
             float angleDifference = sensor->angle - sensor->previousAngle;
 
             // Handle angle wrapping (e.g., crossing 0 or 360 degrees)
-            if (angleDifference > 180.0f){
-                angleDifference -= 360.0f; // Wrap down 
+            if (angleDifference > PI){
+                angleDifference -= TWO_PI; // Wrap down 
                 sensor->turnCount--;     
             }
                 
                 
-            else if (angleDifference < -180.0f){
+            else if (angleDifference < -PI){
 
-                angleDifference += 360.0f; // Wrap up
+                angleDifference += TWO_PI; // Wrap up
                 sensor->turnCount++;  
             }
+
+            sensor->previousAngle = sensor->angle;
+            sensor->lastTime = micros();
+            sensor->multiTurnAngle = sensor->angle + (sensor->turnCount * TWO_PI);
+
+            cumulativeAngle += angleDifference;
+            cumulativeTime += timeDiff;
+            
+            xSemaphoreGive(sensor->angleMutex);
+              
+
+            // Calculate velocity in degrees per second (x10^6 to get in sec)
+            // since timeDiff is in microseconds. 
+            // sensor->velocity = 1000000 * angleDifference / timeDiff;
+
+            sampleCounter++;
+
+
+            if (sampleCounter >= speedCalcRate) {
+            if (cumulativeTime > 0) {
+                xSemaphoreTake(sensor->angleMutex, portMAX_DELAY);
+                // Calculate speed in degrees/second
+                sensor->velocity = 1000000 * cumulativeAngle / cumulativeTime ; // [deg/s]  Convert µs to seconds
+                
+                sensor->smoothVelocity = sensor->smmothingVelocityFactor * sensor->velocity + (1-sensor->smmothingVelocityFactor)*sensor->prevVelocity;
+                
+                sensor->prevVelocity = sensor->smoothVelocity;
+                xSemaphoreGive(sensor->angleMutex);
+            }
+
+            // Reset accumulators
+            cumulativeAngle = 0.0;
+            cumulativeTime = 0;
+            sampleCounter = 0;
+            }
+
+            // Update the previous angle and time
+            // sensor->previousAngle = sensor->angle;
+            // sensor->lastTime = micros();
+            // sensor->multiTurnAngle = sensor->angle + (sensor->turnCount * 360.0f);
+
+            // Release the mutex
+            // xSemaphoreGive(sensor->angleMutex);
+        }
+
+        
+        // I set 8000 Hz for configTICK_RATE_HZ in FreeRTOSconfig.h, that means, it reads at freq of 8kHz
+        vTaskDelay(1);
+    }
+}
+// Static task function for updating the angle in the background
+// void AS5048::angleTask(void *pvParameters)
+// {
+//     // Cast the parameter to the AS5048 object
+//     AS5048 *sensor = (AS5048 *)pvParameters;
+//     sensor->lastTime = micros();
+
+//     const int speedCalcRate = 8;  // Calculate speed every 8 samples (1 kHz if sampling at 8 kHz)
+//     int sampleCounter = 0;       // Counter for angle samples
+//     float cumulativeAngle = 0.0; // Accumulated angle difference
+//     unsigned long cumulativeTime = 0; // Accumulated time
+
+//     while (true)
+//     {
+//         // Read the current angle and update velocity
+//         sensor->readAngle();
+
+//         // Calculate the elapsed time since the last reading
+//         unsigned long timeDiff = sensor->safeMicros(sensor->lastTime);
+
+//         if (timeDiff > 0)
+//         {
+//             // Ensure thread-safe access to shared variables
+//             xSemaphoreTake(sensor->angleMutex, portMAX_DELAY);
+
+//             // Calculate the difference in angle
+//             float angleDifference = sensor->angle - sensor->previousAngle;
+
+//             // Handle angle wrapping (e.g., crossing 0 or 360 degrees)
+//             if (angleDifference > 180.0f){
+//                 angleDifference -= 360.0f; // Wrap down 
+//                 sensor->turnCount--;     
+//             }
+                
+                
+//             else if (angleDifference < -180.0f){
+
+//                 angleDifference += 360.0f; // Wrap up
+//                 sensor->turnCount++;  
+//             }
             
               
 
-            // Calculate velocity in degrees per second
-            sensor->velocity = 1000 * angleDifference / timeDiff;
+//             // Calculate velocity in degrees per second (x10^6 to get in sec)
+//             // since timeDiff is in microseconds. 
+//             sensor->velocity = 1000000 * angleDifference / timeDiff;
 
-            // Update the previous angle and time
-            sensor->previousAngle = sensor->angle;
-            sensor->lastTime = micros();
+//             // Update the previous angle and time
+//             sensor->previousAngle = sensor->angle;
+//             sensor->lastTime = micros();
+//             sensor->multiTurnAngle = sensor->angle + (sensor->turnCount * 360.0f);
 
-            // Release the mutex
-            xSemaphoreGive(sensor->angleMutex);
-        }
+//             // Release the mutex
+//             xSemaphoreGive(sensor->angleMutex);
+//         }
 
-        // Delay to control the task's update rate (2 ms)
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-}
+        
+//         // I set 8000 Hz for configTICK_RATE_HZ in FreeRTOSconfig.h, that means, it reads at freq of 8kHz
+//         vTaskDelay(1);
+//     }
+// }
 
 // Reads the raw angle from the encoder and updates the `angle` variable
 void AS5048::readAngle()
@@ -108,7 +206,10 @@ void AS5048::readAngle()
 
     // Mask the top 2 bits (PAR and EF) and convert to degrees
     rawAngle &= 0x3FFF;
-    float newAngle = (float)rawAngle / 16384.0 * 360.0;
+
+    // float newAngle = (float)rawAngle / 16384.0 * 360.0;
+    //instead, I lower the resolution to 12 bits, because of noise
+    float newAngle = ((float)rawAngle / 16384.0) * TWO_PI; 
 
     // Update the shared `angle` variable safely
     xSemaphoreTake(angleMutex, portMAX_DELAY);
@@ -129,7 +230,7 @@ float AS5048::getAngle()
 float AS5048::getVelocity()
 {
     xSemaphoreTake(angleMutex, portMAX_DELAY);
-    float currentVelocity = velocity;
+    float currentVelocity = smoothVelocity;
     xSemaphoreGive(angleMutex);
     return currentVelocity;
 }
@@ -148,4 +249,22 @@ unsigned long AS5048::safeMicros(unsigned long lastTime)
         // No overflow: regular difference
         return currentTime - lastTime;
     }
+}
+
+float AS5048::getMultiTurnAngle()
+{
+    xSemaphoreTake(angleMutex, portMAX_DELAY);
+    float currentMultiTurnAngle = multiTurnAngle;
+    xSemaphoreGive(angleMutex);
+    return currentMultiTurnAngle;
+}
+
+
+
+void AS5048::resetMultiTurnAngle()
+{
+    xSemaphoreTake(angleMutex, portMAX_DELAY);
+    float currentMultiTurnAngle = 0;
+    xSemaphoreGive(angleMutex);
+    
 }

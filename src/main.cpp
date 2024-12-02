@@ -1,20 +1,33 @@
+// #ifndef CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ 
+// #define CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ 240
+// #endif
+
 #include <Arduino.h>
+#include "freertosconfig.h"
+
 #include "ProfileGenerator.h"
 
+
 #include "AS5048my.h"
-#include "Driver.h"
+// #include "Driver.h"
 #include "PIDAlgorithm.h" 
-#include "esp_mac.h"
-#include "string.h"
+// #include "esp_mac.h"
+// #include "string.h"
 #include "Controller.h"
+#include "Communicator2.h"
+#include "QueueHandler.h"
+#include "esp_mac.h"
 
-#include "Communicator.h"
-// AS5048 &encoder, Driver &driver, Algorithm *algorithm, ProfileGenerator &profileGen
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
-// // Initialize the ProfileGenerator
-// float maxVelocity = 4.0f;   // Maximum velocity
-// float maxAcceleration = 2.0f;  // Maximum acceleration
-// int numSegments = 50;  // Number of segments
+
+// Buffer to hold task information
+
+
+
+QueueHandler queueHandler= QueueHandler();
+
 
 
 ProfileGenerator profileGen(5, 1, 20);
@@ -25,40 +38,52 @@ Driver driver_(13,15,12,14,27,26);
 
 Algorithm* pid = new PIDController(1.0f, 0.1f, 0.05f); // Create a pointer to PIDController
 
-Controller controller_( encoder_,  driver_ , pid,  profileGen );
-String inputString = ""; // Stores the received serial command
-bool stringComplete = false; // Tracks if a full command has been received
 
-HardwareSerial mySerial(0);  // Use Serial1, Serial2, or Serial3 depending on which port you want to use
+Communicator2 communicator_ = Communicator2( queueHandler);
+
+SemaphoreHandle_t mem_ = xSemaphoreCreateMutex();
+
+Controller controller_( encoder_,  driver_ , pid,  profileGen, queueHandler,  communicator_,   mem_);
+
+// Communicator2 communicator = Communicator2();
 
 
-Communicator communicator_(mySerial,controller_);
+
 
 void setup() {
-    // Start serial communication
+
     // Serial.begin(115200);
-
-    encoder_.begin();
-
-    pid->init();
-
-    // Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
-
-    // Generate the S-curve profile
-    float totalDistance = 3.0f;       // Example distance to travel
-    float commandedVelocity = 1.4;   // Example commanded velocity
-
-    driver_.init();
-
-    controller_.init();
-    communicator_.begin();
 
 
     
+
+    encoder_.begin();
+    driver_.init();
+
+    controller_.init();
+
+    encoder_.resetMultiTurnAngle();
+
+   
+    
+
+   
+
 }
 
 
-void loop() {
+void loop(){
 
+    
+
+
+
+    // controller_.setControlValue(20);
+    // controller_.setOmega(1);
+    
+
+    // // Serial.printf("EncoderAngle: %f\n",  encoder_.getMultiTurnAngle());
+    
+    // delay(2000);
 
 }

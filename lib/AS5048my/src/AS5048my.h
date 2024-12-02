@@ -29,19 +29,27 @@ public:
     
     // Retrieves the calculated velocity (thread-safe)
     float getVelocity();
+    float getMultiTurnAngle();
+    void resetMultiTurnAngle();
+    
 
 private:
     int _csPin;                // Chip-select pin for SPI communication
     float angle;               // Current angle in degrees
     float previousAngle;       // Previous angle for velocity calculation
-    float velocity;            // Velocity in degrees per second
+    float velocity; 
+    float prevVelocity; 
+    float smoothVelocity;
+    float smmothingVelocityFactor;          // Velocity in degrees per second
     unsigned long lastTime;    // Last time in microseconds (used for velocity calculation)
     float turnCount = 0;
+    float multiTurnAngle;
     
     SemaphoreHandle_t angleMutex; // Mutex for thread-safe access to `angle` and `velocity`
 
     // Static task function for running in the FreeRTOS task
     static void angleTask(void *pvParameters);
+
     
     // Reads and updates the current angle and velocity
     void readAngle();
