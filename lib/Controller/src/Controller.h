@@ -32,7 +32,7 @@ public:
     float getdutyB();        // Get the duty cycle for phase B
     float getdutyC();        // Get the duty cycle for phase C
 
-    float omega; // Angular velocity parameter
+    float omega=0; // Angular velocity parameter
 
     void setOmega(float omega_); // Set the angular velocity and update related parameters
     
@@ -40,6 +40,12 @@ public:
 
     float targetPOSITION;
     float targetVELOCITY;
+
+    float maxVelocity;
+    float maxPosition;
+
+    void setTargetVelocity(float velocity_);
+    void setTargetPosition(float position_);
 
 
 

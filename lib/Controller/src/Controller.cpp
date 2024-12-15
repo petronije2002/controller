@@ -1,4 +1,5 @@
 // Controller.cpp
+#include "Arduino.h"
 #include "Controller.h"
 #include "AS5048my.h"
 #include "math.h"
@@ -21,12 +22,15 @@ Controller::Controller(AS5048 &encoder, Driver &driver, Algorithm *algorithm, Pr
 // Initialize the controller and start the FreeRTOS task
 void Controller::init()
 {
-    startTask();
+    
     delay(1);
     initSinTable();
     delay(1);
+    setTargetVelocity(0); // this sets target velocity to zero
+    setTargetPosition(this->_encoder.getAngle()); // this sets target position, to current angle. This prevents 'unpredicted movement' 
     // setOmega(1.0);
     // setControlValue(20.0);
+    startTask();
 }
 
 void Controller::commandTarget(float targetPosition, float targetVelocity)
@@ -44,7 +48,9 @@ void Controller::commandTarget(float targetPosition, float targetVelocity)
 void Controller::startTask()
 {
 
-    this->comm_._serial.println("Intro to pwm task");
+    // this->comm_._serial.println("Intro to pwm task");
+    USBSerial.println("Intro to pwm task");
+
     TaskParameters *params = new TaskParameters(&queueHandler, &Controller::setOmega, &Controller::setControlValue, this);
 
     // TaskParams* params = new TaskParams{ this};  // Dynamically allocate
@@ -71,6 +77,9 @@ void Controller::startTask()
 // Placeholder for control update logic (not yet implemented)
 void Controller::update(float desiredAngle)
 {
+
+
+    
 }
 
 void Controller::initSinTable()
@@ -134,11 +143,16 @@ void Controller::pwmTask(void *pvParameters)
         // dutyA, dutyB and dutyC, will always be between 0 and 100
         // Whatever is returned from the algorithm , as a controlValue ,  will be rescaled from 0-50.
 
-        scaleControle = controller_->controlValue / controller_->maxControlValue;
+        scaleControle =  100* controller_->controlValue / controller_->maxControlValue;
 
-        controller_->dutyA = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle);
-        controller_->dutyB = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle + 2 * M_PI / 3);
-        controller_->dutyC = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle + 4 * M_PI / 3);
+        // controller_->dutyA = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle);
+        // controller_->dutyB = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle + 2 * M_PI / 3);
+        // controller_->dutyC = 50 + 50 * scaleControle * controller_->getSinFromTable(tempAngle + 4 * M_PI / 3);
+       
+       
+        controller_->dutyA =  (scaleControle/2 ) * (0.5+ 0.5* controller_->getSinFromTable(21*tempAngle));
+        controller_->dutyB =  (scaleControle/2)  * (0.5+ 0.5*controller_->getSinFromTable(21*tempAngle + 2 * M_PI / 3));
+        controller_->dutyC = (scaleControle/2 ) * (0.5+ 0.5*controller_->getSinFromTable(21*tempAngle + 4 * M_PI / 3));
 
         // Send the duty cycles to the driver
         controller_->_driver.setPWMDutyCycle(controller_->dutyA, controller_->dutyB, controller_->dutyC);
@@ -150,12 +164,14 @@ void Controller::pwmTask(void *pvParameters)
         {
             controller_->counter = 0;
         }
-        if (controller_->counter % 1000 == 0)
-        {
+        // if (controller_->counter % 10 == 0)
+        // {
 
-            // HERE YOU NEED TO SEND EVENTUALLY SOME VALUES TO SERIAL PORT
-            // xQueueSend(controller_->serialQueue, &controller_->dutyA, pdMS_TO_TICKS(0)); // No dynamic allocation
-        }
+        //     controller_->comm_._serial.printf("%.2f, %.2f, %.2f\n", controller_->dutyA, controller_->dutyB, controller_->dutyC);
+
+        //     // HERE YOU NEED TO SEND EVENTUALLY SOME VALUES TO SERIAL PORT
+        //     // xQueueSend(controller_->serialQueue, &controller_->dutyA, pdMS_TO_TICKS(0)); // No dynamic allocation
+        // }
 
         xSemaphoreGive(controller_->memMutex);
 
@@ -221,6 +237,9 @@ void Controller::setOmega(float omega_)
 {
     xSemaphoreTake(memMutex, portMAX_DELAY);
 
+//    USBSerial.printf("Omega: %.2f\n", omega_);
+
+
     if (omega_ > 0)
     {
         this->omega = omega_;
@@ -253,6 +272,8 @@ void Controller::setControlValue(float controlValue_)
 {
 
     xSemaphoreTake(memMutex, portMAX_DELAY);
+
+    USBSerial.printf("ControlValue: %.2f\n", controlValue_);
     controlValue = constrain_(controlValue_, 0, this->maxControlValue);
     xSemaphoreGive(memMutex);
 }
@@ -283,6 +304,37 @@ float Controller::getMaxXontrolValue()
 
     return aaa;
 }
+
+
+
+
+void Controller::setTargetPosition(float position_)
+{
+
+    xSemaphoreTake(memMutex, portMAX_DELAY);
+
+    targetVELOCITY = constrain_(position_, 0, this->maxPosition);
+
+    xSemaphoreGive(memMutex);
+}
+
+
+void Controller::setTargetVelocity(float velocity_)
+{
+
+    xSemaphoreTake(memMutex, portMAX_DELAY);
+
+    targetVELOCITY = constrain_(velocity_, 0, this->maxVelocity);
+
+    xSemaphoreGive(memMutex);
+}
+
+
+
+
+
+
+
 
 void Controller::receiveCommandTask(void *pvParameters)
 {
@@ -323,16 +375,21 @@ void Controller::receiveCommandTask(void *pvParameters)
             case MESSAGE_TYPE_COMMAND:
 
 
+                // USBSerial.printf("Position: %f\nVelocity: %f\n", receivedMessage.payload.commandData.position,receivedMessage.payload.commandData.velocity);
+
+
                 // (controller->comm_._serial.printf("Position: %.2f\n",receivedMessage.payload.commandData.position));
                 // (controller->comm_._serial.printf("Velocity: %.2f\n",receivedMessage.payload.commandData.velocity));
 
 
 
-                (controller->*params->setOmega)(receivedMessage.payload.commandData.velocity);        // Call setOmega on Controller
-                (controller->*params->setControlValue)(receivedMessage.payload.commandData.position); // Call setControlValue on Controller
+                // (controller->*params->setOmega)(receivedMessage.payload.commandData.velocity);        // Call setOmega on Controller
+                // (controller->*params->setControlValue)(receivedMessage.payload.commandData.position); // Call setControlValue on Controller
 
-                // controller_->setOmega(receivedMessage.payload.commandData.velocity);
-                // controller_->setControlValue(receivedMessage.payload.commandData.position);
+                controller->setTargetVelocity(receivedMessage.payload.commandData.velocity);
+                controller->setTargetPosition(receivedMessage.payload.commandData.position);
+
+                controller->_profileGen.generateScurveProfile(receivedMessage.payload.commandData.position, receivedMessage.payload.commandData.velocity);
 
                 break;
 

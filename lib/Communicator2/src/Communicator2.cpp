@@ -10,7 +10,8 @@ Communicator2::Communicator2(QueueHandler &queuhandler_):queueHandler(queuhandle
 
    
 
-    this->_serial.begin(115200);
+    // this->_serial.begin(115200);
+    USBSerial.begin(115200);
     // Create the Communicator task that listens for incoming messages
     // xTaskCreate(CommunicatorTask, "CommunicatorTask", 4096, this, 1, &commTaskHandle);
     xTaskCreatePinnedToCore(CommunicatorTask, "receivingCommandTask", 4096, this, 2, NULL, 0);
@@ -50,18 +51,19 @@ void Communicator2::CommunicatorTask(void* pvParameters) {
 // Method to handle serial input and process the messages
 void Communicator2::handleSerialInput() {
     // Check if there is any data available on the serial port
-    if (this->_serial.available() > 0) {
-        String command = this->_serial.readStringUntil('\n');  // Read until newline
+    if (USBSerial.available() > 0) {
+        String command = USBSerial.readStringUntil('\n');  // Read until newline
 
         // this->_serial.printf("received: %s\n", command.c_str());
         Message msg={};
         parseCommand(command, msg);  // Parse the command into a Message struct
 
-        // this->_serial.printf("Position: %.2f\n", msg.payload.commandData.position);
+        
         
         if(queueHandler.sendMessageToQueue(queueHandler.commandQueue, msg)){
 
-            //  this->_serial.println("Message sent to the queue");
+            USBSerial.printf("Position: %.2f\n", msg.payload.commandData.position);
+            USBSerial.printf("Velocity: %.2f\n", msg.payload.commandData.velocity);
         };  // Send the parsed message to the appropriate queue
     }
 }
@@ -84,9 +86,6 @@ void Communicator2::parseCommand(const String& command, Message &msg) {
                 //    this->_serial.println("Command received");
                 //    this->_serial.printf("QueueHandler address: %p\n", queueHandler);
 
-            
-            
-           
             break;
         case 'F':  // Feedback message (e.g., "F2 P50.1 V1.5 T3.2")
             msg.type = MESSAGE_TYPE_FEEDBACK;
@@ -102,7 +101,7 @@ void Communicator2::parseCommand(const String& command, Message &msg) {
                    &msg.payload.errorData.errorMessage);
             break;
         default:
-            this->_serial.println("Unknown message type, message ignored!");
+            USBSerial.println("Unknown message type, message ignored!");
             break;
     }
 }

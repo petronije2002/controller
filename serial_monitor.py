@@ -27,25 +27,35 @@ def compute_statistics(data):
     return mean, median, min_val, max_val, rms
 
 
+# def save_to_csv(filename, data):
+#     """
+#     Saves the collected data to a CSV file.
+#     """
+#     try:
+#         with open(filename, mode='w', newline='') as file:
+#             writer = csv.writer(file)
+#             writer.writerow(["Sample Number", "Value"])  # Write header
+#             for i, value in enumerate(data):
+#                 writer.writerow([i + 1, value])
+#         print(f"Data saved to {filename}")
+#     except Exception as e:
+#         print(f"Error saving to CSV: {e}")
+
 def save_to_csv(filename, data):
     """
     Saves the collected data to a CSV file.
     """
-    try:
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Sample Number", "Value"])  # Write header
-            for i, value in enumerate(data):
-                writer.writerow([i + 1, value])
-        print(f"Data saved to {filename}")
-    except Exception as e:
-        print(f"Error saving to CSV: {e}")
+    import csv
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["DutyA", "DutyB", "DutyC"])
+        for row in data:
+            writer.writerow(row)
 
 
 
 
-
-def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=3000):
+def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=100):
     """
     Collects `sample_size` values from the serial port and computes statistics.
     """
@@ -54,8 +64,12 @@ def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=300
             print(f"Connected to {port} at {baudrate} baud.")
             print(f"Collecting {sample_size} samples...")
 
-            values = []
-            while len(values) < sample_size:
+
+            dutyA_values = []
+            dutyB_values = []
+            dutyC_values = []
+
+            while len(dutyA_values) < sample_size:
 
                 if ser.in_waiting > 0:
                     # Read a line from the serial port
@@ -67,8 +81,20 @@ def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=300
                     
                     # Try to extract a floating-point value
                     try:
-                        angle = float(line.split(":")[-1].strip())  # Assuming "Angle: <value>"
-                        values.append(angle)
+
+                        parts = line.split(',')
+                        if len(parts) == 3:  # Ensure there are exactly three values
+                            dutyA = float(parts[0].strip())  # First value
+                            dutyB = float(parts[1].strip())  # Second value
+                            dutyC = float(parts[2].strip())  # Third value
+                            
+                            # Add values to respective lists
+                            dutyA_values.append(dutyA)
+                            dutyB_values.append(dutyB)
+                            dutyC_values.append(dutyC)
+                            
+                        # angle = float(line.split(":")[-1].strip())  # Assuming "Angle: <value>"
+                        # values.append(angle)
                         # print(f"Collected: {angle}")
                     except ValueError:
                         print(f"Invalid data: {line}")  # Handle invalid lines
@@ -76,15 +102,16 @@ def monitor_serial_and_collect(port, baudrate=115200, timeout=1, sample_size=300
                 time.sleep(0.01)  # Avoid tight polling
 
             # Compute statistics once the data is collected
-            mean, median, min_val, max_val, rms = compute_statistics(values)
-            print("\n--- Statistics ---")
-            print(f"Mean: {mean:.4f}")
-            print(f"Median: {median:.4f}")
-            print(f"Min: {min_val:.4f}")
-            print(f"Max: {max_val:.4f}")
-            print(f"RMS: {rms:.4f}")
+            # mean, median, min_val, max_val, rms = compute_statistics(values)
+            # print("\n--- Statistics ---")
+            # print(f"Mean: {mean:.4f}")
+            # print(f"Median: {median:.4f}")
+            # print(f"Min: {min_val:.4f}")
+            # print(f"Max: {max_val:.4f}")
+            # print(f"RMS: {rms:.4f}")
+            save_to_csv("result.csv", zip(dutyA_values, dutyB_values, dutyC_values))
 
-            save_to_csv("result.csv", values)
+            # save_to_csv("result.csv", values)
 
             
 

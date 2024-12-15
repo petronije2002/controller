@@ -22,7 +22,7 @@ public:
     // Method to parse incoming serial messages
     void handleSerialInput();
     void initializeSerial(uint32_t baudRate);
-    HardwareSerial  _serial =HardwareSerial(0); ;
+    // HardwareSerial  _serial = HardwareSerial(0); 
 
 private:
     // FreeRTOS queue handles for different message types

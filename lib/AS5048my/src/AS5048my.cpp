@@ -1,6 +1,13 @@
 #include "AS5048my.h"
 
 
+#define MISO_PIN 12  // Replace with your chosen MISO pin
+#define MOSI_PIN 11  // Replace with your chosen MOSI pin
+#define SCK_PIN 13   // Replace with your chosen SCK pin
+#define CS_PIN 10   // Replace with your chosen CS pin
+
+//  SPI.begin(SCK_PIN, MISO_PIN,MOSI_PIN, CS_PIN); // these pins are differ
+
 AS5048::AS5048(int csPin) : _csPin(csPin), angle(0.0), velocity(0.0),smoothVelocity(0) ,prevVelocity(0.0),smmothingVelocityFactor(0.5)
 {
     // Create a mutex for thread-safe access to shared variables
@@ -15,7 +22,7 @@ void AS5048::begin()
     digitalWrite(_csPin, HIGH); // Deselect the encoder initially
     
     // Initialize SPI communication
-    SPI.begin();
+    SPI.begin(SCK_PIN, MISO_PIN,MOSI_PIN, CS_PIN); // these pins are differences
     
     // Record the starting time
     lastTime = micros();
@@ -193,6 +200,7 @@ void AS5048::readAngle()
     uint16_t command = 0x3FFF; // Command to read the angle
 
     // Begin SPI communication with the encoder
+    // SPI.begin(SCK_PIN, MISO_PIN,MOSI_PIN, CS_PIN); // these pins are differences
     SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE1));
 
     digitalWrite(_csPin, LOW);       // Select the encoder
@@ -264,7 +272,8 @@ float AS5048::getMultiTurnAngle()
 void AS5048::resetMultiTurnAngle()
 {
     xSemaphoreTake(angleMutex, portMAX_DELAY);
-    float currentMultiTurnAngle = 0;
+    float currentMultiTurnAngle = this->getAngle();
+    this->turnCount=0;
     xSemaphoreGive(angleMutex);
     
 }

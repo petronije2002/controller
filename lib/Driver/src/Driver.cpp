@@ -76,7 +76,7 @@ void Driver::stopDriver(){
     mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_2);
 
     // gpio_set_direction((gpio_num_t) this->_hoPhase1, GPIO_MODE_OUTPUT);
-    gpio_set_level((gpio_num_t)_hoPhase1, 0);  // Set to LOW
+    // gpio_set_level((gpio_num_t)_hoPhase1, 0);  // Set to LOW
 
 
   
